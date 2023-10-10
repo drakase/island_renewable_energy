@@ -35,7 +35,6 @@ A728******,****有限会社,谷****,五島市福江町****,095****,太陽光,42,
   * 再生可能エネルギー発電設備の割合は、事業者の住所または発電設備の所在地が登録されていない(NULL)レコードを無視して算出しています
 ```json
 {
-  "離島住所数": 13422,
   "再生可能エネルギー発電設備数": 7406,
   "再生可能エネルギー発電設備の割合: 発電事業者が離島内かつ発電設備の所在地が離島内 / 発電設備の所在地が離島内": "273 / 523 = 52.199%",
   "再生可能エネルギー発電設備の割合: 発電事業者が離島外かつ発電設備の所在地が離島内 / 発電設備の所在地が離島内": "250 / 523 = 47.801%"
@@ -65,3 +64,37 @@ cd island_renewable_energy
 # この例では、island_renewable_energy_operator/42_nagasaki.csv に長崎県の離島の発電事業者が運転する発電設備の一覧(フラグ)等が保存されます
 # また、island_renewable_energy_operator/42_nagasaki.json に長崎県の離島の発電事業者が運転する発電設備の割合等が保存されます
 ```
+### 一括実行
+```bash
+# 適宜ディレクトリを作成して、全ての都道府県のデータを配置します
+# 離島住所一覧: island_address/*.csv
+# 再生可能エネルギー発電事業計画の認定情報: renewable_energy_operator/*.xlsx
+
+# 離島振興対策実施地域データが存在する全ての都道府県の離島の発電事業者が運転する発電設備の一覧等を生成します
+for pref_no in $(ls island_address | grep .csv | grep -v all.csv | sed -E "s/^(.*).csv/\1/"); do
+  island_address=${pref_no}.csv
+  renewable_energy_operator=`ls renewable_energy_operator | grep -E "^${pref_no}\..+\.xlsx$"`
+  out_file_name=${pref_no}.csv
+  if [ ! -e island_renewable_energy_operator/$out_file_name ]; then
+    . ./check_operator.sh \
+        island_address/$island_address \
+        renewable_energy_operator/$renewable_energy_operator \
+        island_renewable_energy_operator/$out_file_name
+  fi
+done
+
+# 全ての都道府県の離島の発電事業者が運転する発電設備の一覧を生成します
+awk 'FNR!=1||NR==1' island_renewable_energy_operator/??.csv > island_renewable_energy_operator/all.csv
+
+# 全ての都道府県の離島の発電事業者が運転する発電設備の割合等を保存します(all.json が作成されます)
+. ./check_operator.sh "NULL" "NULL" island_renewable_energy_operator/all.csv
+```
+### island_renewable_energy_operator/all.json
+```json
+{
+  "再生可能エネルギー発電設備数": 217217,
+  "再生可能エネルギー発電設備の割合: 発電事業者が離島内かつ発電設備の所在地が離島内 / 発電設備の所在地が離島内": "426 / 1439 = 29.604%",
+  "再生可能エネルギー発電設備の割合: 発電事業者が離島外かつ発電設備の所在地が離島内 / 発電設備の所在地が離島内": "1013 / 1439 = 70.396%"
+}
+```
+* __離島にある発電設備のうち、約3割が離島の発電事業者により運転されているようです__

@@ -74,11 +74,15 @@ def check_addresses(island_address_dicts, operator_df):
     return checked_operator_df
 
 def main():
-    island_address_dicts = load_csv(args.island_address)
-    operator_df = load_excel(args.operator, sheet_name="認定設備", header=2, skip_row=1, skip_col=1)
-    checked_operator_df = check_addresses(island_address_dicts, operator_df)
-    os.makedirs(os.path.dirname(args.out_file_name), exist_ok=True)
-    checked_operator_df.to_csv(args.out_file_name, header=True, index=False)
+    if args.island_address != "NULL" and args.operator != "NULL":
+        island_address_dicts = load_csv(args.island_address)
+        operator_df = load_excel(args.operator, sheet_name="認定設備", header=2, skip_row=1, skip_col=1)
+        checked_operator_df = check_addresses(island_address_dicts, operator_df)
+        os.makedirs(os.path.dirname(args.out_file_name), exist_ok=True)
+        checked_operator_df.to_csv(args.out_file_name, header=True, index=False)
+    else:
+        logger.info("stat")
+        checked_operator_df = pd.read_csv(args.out_file_name)
     island_facility_df = checked_operator_df[
         (checked_operator_df["事業者の住所"] != "NULL")
         & (checked_operator_df["事業者の住所"] != "NULL")
@@ -99,13 +103,14 @@ def main():
         & (checked_operator_df["島内発電設備"] == 1)
     ]
     impure_island_operator_count = len(impure_island_operator_df)
+    pure_island_operator_rate = round(pure_island_operator_count/island_facility_cout*100, 3) if island_facility_cout > 0 else 0
+    impure_island_operator_rate = round(impure_island_operator_count/island_facility_cout*100, 3) if island_facility_cout > 0 else 0
     stat_dict = {
-        "離島住所数": len(island_address_dicts),
-        "再生可能エネルギー発電設備数": len(operator_df),
+        "再生可能エネルギー発電設備数": len(checked_operator_df),
         "再生可能エネルギー発電設備の割合: 発電事業者が離島内かつ発電設備の所在地が離島内 / 発電設備の所在地が離島内":
-            f"{pure_island_operator_count} / {island_facility_cout} = {round(pure_island_operator_count/island_facility_cout*100, 3)}%",
+            f"{pure_island_operator_count} / {island_facility_cout} = {pure_island_operator_rate}%",
         "再生可能エネルギー発電設備の割合: 発電事業者が離島外かつ発電設備の所在地が離島内 / 発電設備の所在地が離島内":
-            f"{impure_island_operator_count} / {island_facility_cout} = {round(impure_island_operator_count/island_facility_cout*100, 3)}%",
+            f"{impure_island_operator_count} / {island_facility_cout} = {impure_island_operator_rate}%",
     }
     logger.info(stat_dict)
     with open(f"{os.path.splitext(args.out_file_name)[0]}.json", encoding="utf-8", mode="w") as f:
